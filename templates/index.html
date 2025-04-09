@@ -17,16 +17,26 @@
       <div class="card shadow-lg p-4 w-100" style="max-width: 500px">
         <h1 class="text-center mb-4">Upload Image for Prediction</h1>
 
-        <input
-          type="file"
-          class="form-control mb-3"
-          id="imageInput"
-          accept="image/*"
-        />
+        <!-- No more form tag -->
+        <div>
+          <div class="mb-3">
+            <label for="imageInput" class="form-label">Select Image</label>
+            <input
+              type="file"
+              class="form-control"
+              id="imageInput"
+              accept="image/*"
+            />
+          </div>
 
-        <button class="btn btn-primary w-100" onclick="uploadImage()">
-          Predict
-        </button>
+          <button
+            type="button"
+            class="btn btn-primary w-100"
+            onclick="uploadImage()"
+          >
+            Predict
+          </button>
+        </div>
 
         <div class="mt-4 text-center">
           <p id="result" class="fw-semibold fs-5 text-dark"></p>
@@ -36,7 +46,7 @@
 
     <!-- JavaScript Logic -->
     <script>
-      async function uploadImage() {
+      async function uploadImage(event) {
         const input = document.getElementById("imageInput");
         const file = input.files[0];
         if (!file) {
@@ -47,15 +57,22 @@
         const formData = new FormData();
         formData.append("image", file);
 
-        const response = await fetch("/predict", {
-          method: "POST",
-          body: formData,
-        });
+        try {
+          const response = await fetch("/predict", {
+            method: "POST",
+            body: formData,
+          });
 
-        const data = await response.json();
-        document.getElementById(
-          "result"
-        ).innerText = `Prediction: ${data.prediction} (Confidence: ${data.confidence}%)`;
+          const data = await response.json();
+
+          document.getElementById(
+            "result"
+          ).innerText = `Prediction: ${data.prediction} (Confidence: ${data.confidence}%)`;
+        } catch (error) {
+          console.error("Error:", error);
+          document.getElementById("result").innerText =
+            "Error: Unable to get prediction.";
+        }
       }
     </script>
   </body>
