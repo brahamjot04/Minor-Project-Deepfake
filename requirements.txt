@@ -1,0 +1,6 @@
+tensorflow==2.19.0
+matplotlib>=3.6.0
+numpy>=1.24.0
+pandas>=1.5.0        # Optional, but useful if you later analyze results
+scikit-learn>=1.2.0  # Optional, if you later calculate metrics like confusion matrix
+seaborn>=0.12.0     # Optional, if you later visualize results
