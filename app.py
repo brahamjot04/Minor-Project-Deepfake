@@ -9,10 +9,10 @@ app = Flask(__name__)
 CORS(app)
 
 # Load MobileNetV2 fine-tuned model
-model = tf.keras.models.load_model("face_classifier_mobilenet_finetuned.keras")
+model = tf.keras.models.load_model("face_classifier_test.keras")
 
 # MobileNetV2 expects input size 128x128
-img_size = (128, 128)
+img_size = (32, 32)
 
 # Preprocess function for incoming image
 def preprocess_image(image_bytes):

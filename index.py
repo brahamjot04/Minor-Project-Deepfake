@@ -4,14 +4,19 @@ from tensorflow.keras.preprocessing import image_dataset_from_directory
 import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
 
+physical_devices = tf.config.list_physical_devices('GPU')
+if physical_devices:
+    tf.config.set_logical_device_configuration(physical_devices[0], 
+                                               [tf.config.LogicalDeviceConfiguration(memory_limit=3096)])
+
 # Set dataset paths
 train_dir = 'Dataset/training/'
 val_dir = 'Dataset/val/'
 test_dir = 'Dataset/testing/'  # Added test dataset path
 
 # Load data (auto-labels from folder names)
-img_size = (128, 128)
-batch_size = 32
+img_size = (64, 64)
+batch_size = 4
 
 train_ds = image_dataset_from_directory(
     train_dir,
@@ -52,15 +57,15 @@ data_augmentation = tf.keras.Sequential([
 # Build CNN model
 model = models.Sequential([
     data_augmentation,  # Apply augmentation first
-    layers.Rescaling(1./255, input_shape=(128, 128, 3)),
+    layers.Rescaling(1./255, input_shape=(64, 64, 3)),
     layers.Conv2D(32, (3, 3), activation='relu'),
     layers.MaxPooling2D(2, 2),
     layers.Conv2D(64, (3, 3), activation='relu'),
     layers.MaxPooling2D(2, 2),
-    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.Conv2D(64, (3, 3), activation='relu'),
     layers.MaxPooling2D(2, 2),
     layers.Flatten(),
-    layers.Dense(128, activation='relu'),
+    layers.Dense(64, activation='relu'),
     layers.Dropout(0.5),
     layers.Dense(1, activation='sigmoid')  # binary output
 ])
@@ -80,7 +85,7 @@ early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=
 history = model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=20,  # Increased epochs
+    epochs=10,  # Increased epochs
     callbacks=[reduce_lr, early_stop]
 )
 
@@ -108,7 +113,8 @@ print(f"Test Loss: {test_loss:.4f}")
 plt.figure(figsize=(10, 10))
 for images, labels in test_ds.take(1):  # Take one batch of test data
     predictions = model.predict(images)
-    for i in range(9):  # Display 9 images
+    num_images = min(9, len(images))  # Ensure we don't go out of bounds
+    for i in range(num_images):  # Display only available images
         ax = plt.subplot(3, 3, i + 1)
         plt.imshow(images[i].numpy().astype("uint8"))
         predicted_label = "Positive" if predictions[i] > 0.5 else "Negative"
@@ -118,4 +124,4 @@ for images, labels in test_ds.take(1):  # Take one batch of test data
 plt.show()
 
 # Save model
-model.save("face_classifier.keras")
+model.save("face_classifier_test.keras")
