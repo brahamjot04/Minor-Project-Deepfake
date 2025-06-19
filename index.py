@@ -4,26 +4,30 @@ from tensorflow.keras.preprocessing import image_dataset_from_directory
 import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
 
+# Configure GPU if available
 physical_devices = tf.config.list_physical_devices('GPU')
 if physical_devices:
-    tf.config.set_logical_device_configuration(physical_devices[0], 
-                                               [tf.config.LogicalDeviceConfiguration(memory_limit=3096)])
+    tf.config.set_logical_device_configuration(
+        physical_devices[0], 
+        [tf.config.LogicalDeviceConfiguration(memory_limit=4096)]
+    )
 
 # Set dataset paths
 train_dir = 'Dataset/training/'
 val_dir = 'Dataset/val/'
-test_dir = 'Dataset/testing/'  # Added test dataset path
+test_dir = 'Dataset/testing/'
 
-# Load data (auto-labels from folder names)
+# Image parameters
 img_size = (64, 64)
-batch_size = 4
+batch_size = 32  # Optimized batch size
 
+# Load datasets with consistent parameters
 train_ds = image_dataset_from_directory(
     train_dir,
     image_size=img_size,
     batch_size=batch_size,
-    label_mode='binary',  # for binary classification
-    shuffle=True  # Shuffle the data
+    label_mode='binary',
+    shuffle=True
 )
 
 val_ds = image_dataset_from_directory(
@@ -31,7 +35,7 @@ val_ds = image_dataset_from_directory(
     image_size=img_size,
     batch_size=batch_size,
     label_mode='binary',
-    shuffle=False  # No need to shuffle validation data
+    shuffle=False
 )
 
 test_ds = image_dataset_from_directory(
@@ -39,89 +43,127 @@ test_ds = image_dataset_from_directory(
     image_size=img_size,
     batch_size=batch_size,
     label_mode='binary',
-    shuffle=False  # No need to shuffle test data
+    shuffle=False
 )
 
-# caching and prefetch for performance
+# Optimize data pipeline
 AUTOTUNE = tf.data.AUTOTUNE
 train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
 val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 test_ds = test_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
-# Data augmentation
+# Balanced data augmentation
 data_augmentation = tf.keras.Sequential([
     layers.RandomFlip("horizontal"),
-    layers.RandomRotation(0.2),
+    layers.RandomRotation(0.15),  # Balanced rotation range
+    layers.RandomZoom(0.1),
 ])
 
-# Build CNN model
+# Improved model architecture
 model = models.Sequential([
-    data_augmentation,  # Apply augmentation first
+    data_augmentation,
     layers.Rescaling(1./255, input_shape=(64, 64, 3)),
-    layers.Conv2D(32, (3, 3), activation='relu'),
+    
+    # Convolutional blocks
+    layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
+    layers.BatchNormalization(),
     layers.MaxPooling2D(2, 2),
-    layers.Conv2D(64, (3, 3), activation='relu'),
+    
+    layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
+    layers.BatchNormalization(),
     layers.MaxPooling2D(2, 2),
-    layers.Conv2D(64, (3, 3), activation='relu'),
+    
+    layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+    layers.BatchNormalization(),
     layers.MaxPooling2D(2, 2),
+    
+    # Classifier head
     layers.Flatten(),
-    layers.Dense(64, activation='relu'),
-    layers.Dropout(0.5),
-    layers.Dense(1, activation='sigmoid')  # binary output
+    layers.Dense(128, activation='relu'),
+    layers.BatchNormalization(),
+    layers.Dropout(0.3),
+    layers.Dense(1, activation='sigmoid')
 ])
 
-# Compile model
+# Compile model with learning rate
 model.compile(
-    optimizer='adam',
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
     loss='binary_crossentropy',
-    metrics=['accuracy']
+    metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
 )
 
-# Learning Rate Scheduler and Early Stopping
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=1e-5)
-early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+# Enhanced callbacks
+callbacks = [
+    EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True, verbose=1),
+    ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, min_lr=1e-6, verbose=1)
+]
 
 # Train model
 history = model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=10,  # Increased epochs
-    callbacks=[reduce_lr, early_stop]
+    epochs=30,
+    callbacks=callbacks
 )
 
-# Plot accuracy & loss
-plt.figure(figsize=(10, 4))
-plt.subplot(1, 2, 1)
-plt.plot(history.history['accuracy'], label='Train Acc')
-plt.plot(history.history['val_accuracy'], label='Val Acc')
-plt.legend()
-plt.title("Accuracy")
+# Save model
+model.save("face_classifier_final.keras")
 
+# Evaluation metrics
+test_loss, test_acc, test_precision, test_recall = model.evaluate(test_ds)
+print(f"\nTest Accuracy: {test_acc*100:.2f}%")
+print(f"Test Loss: {test_loss:.4f}")
+print(f"Precision: {test_precision:.4f}")
+print(f"Recall: {test_recall:.4f}")
+
+# Calculate F1 Score
+test_f1 = 2 * (test_precision * test_recall) / (test_precision + test_recall + 1e-7)
+print(f"F1 Score: {test_f1:.4f}")
+
+# Plot training history
+plt.figure(figsize=(12, 5))
+
+# Accuracy plot
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'], label='Train Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Training and Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+
+# Loss plot
 plt.subplot(1, 2, 2)
 plt.plot(history.history['loss'], label='Train Loss')
-plt.plot(history.history['val_loss'], label='Val Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
 plt.legend()
-plt.title("Loss")
+
+plt.tight_layout()
+plt.savefig('training_history.png')
 plt.show()
 
-# Evaluate the model on the test dataset
-test_loss, test_accuracy = model.evaluate(test_ds)
-print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
-print(f"Test Loss: {test_loss:.4f}")
-
-# Visualize predictions on a few test images
-plt.figure(figsize=(10, 10))
-for images, labels in test_ds.take(1):  # Take one batch of test data
+# Prediction visualization
+plt.figure(figsize=(15, 10))
+for images, labels in test_ds.take(1):
     predictions = model.predict(images)
-    num_images = min(9, len(images))  # Ensure we don't go out of bounds
-    for i in range(num_images):  # Display only available images
-        ax = plt.subplot(3, 3, i + 1)
+    for i in range(min(9, len(images))):
+        ax = plt.subplot(3, 3, i+1)
         plt.imshow(images[i].numpy().astype("uint8"))
-        predicted_label = "Positive" if predictions[i] > 0.5 else "Negative"
+        
+        pred_prob = predictions[i][0]
+        pred_label = "Positive" if pred_prob > 0.5 else "Negative"
         true_label = "Positive" if labels[i] == 1 else "Negative"
-        plt.title(f"Pred: {predicted_label}\nTrue: {true_label}")
+        
+        # Color code based on correctness
+        color = 'green' if pred_label == true_label else 'red'
+        
+        plt.title(f"Pred: {pred_label} ({pred_prob:.2f})\nTrue: {true_label}", color=color)
         plt.axis("off")
+        
+plt.suptitle('Model Predictions on Test Samples', fontsize=16)
+plt.tight_layout()
+plt.savefig('test_predictions.png')
 plt.show()
-
-# Save model
-model.save("face_classifier_test.keras")

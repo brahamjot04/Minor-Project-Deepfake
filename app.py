@@ -8,17 +8,17 @@ import io
 app = Flask(__name__)
 CORS(app)
 
-# Load MobileNetV2 fine-tuned model
+# Load model (expects 64x64 input)
 model = tf.keras.models.load_model("face_classifier_test.keras")
 
-# MobileNetV2 expects input size 128x128
-img_size = (32, 32)
+# Input size must match training (64x64)
+img_size = (64, 64)  # Changed from 32x32
 
-# Preprocess function for incoming image
+# Preprocess without normalization (model handles rescaling)
 def preprocess_image(image_bytes):
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image = image.resize(img_size)
-    image_array = np.array(image) / 255.0  # Normalize pixel values
+    image_array = np.array(image)  # No division by 255!
     image_array = np.expand_dims(image_array, axis=0)  # Add batch dimension
     return image_array.astype(np.float32)
 
@@ -40,8 +40,10 @@ def predict():
         img_array = preprocess_image(img_bytes)
 
         prediction = model.predict(img_array)[0][0]
-        result = "Positive" if prediction > 0.5 else "Negative"
-        confidence = float(prediction) if prediction > 0.5 else 1 - float(prediction)
+        # Get probability of positive class
+        positive_prob = float(prediction)
+        result = "Positive" if positive_prob > 0.5 else "Negative"
+        confidence = positive_prob if result == "Positive" else 1 - positive_prob
 
         return jsonify({
             'prediction': result,
