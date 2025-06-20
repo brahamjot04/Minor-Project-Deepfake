@@ -2,77 +2,536 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Face Classifier</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Bootstrap CDN -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeepScan | Deepfake Detection</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      :root {
+        --primary: #1a56db;
+        --primary-dark: #1e429f;
+        --secondary: #6b7280;
+        --light: #f9fafb;
+        --dark: #111827;
+        --border: #e5e7eb;
+        --authentic: #10b981;
+        --deepfake: #ef4444;
+        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      }
+
+      body {
+        background: linear-gradient(135deg, #f0f4f8, #e5e9f0);
+        min-height: 100vh;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color: var(--dark);
+        padding-bottom: 40px;
+      }
+
+      .navbar {
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-dark)
+        );
+        border-radius: 0 0 12px 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .navbar-brand {
+        font-weight: 700;
+        font-size: 1.5rem;
+        color: white !important;
+      }
+
+      .nav-link {
+        color: rgba(255, 255, 255, 0.85) !important;
+        font-weight: 500;
+        transition: all 0.2s ease;
+      }
+
+      .nav-link:hover,
+      .nav-link.active {
+        color: white !important;
+      }
+
+      .container-wrapper {
+        max-width: 1200px;
+        margin: 30px auto;
+        padding: 0 20px;
+      }
+
+      .page-title {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--primary);
+      }
+
+      .footer {
+        text-align: center;
+        padding: 20px;
+        color: var(--secondary);
+        font-size: 0.9rem;
+        margin-top: 40px;
+      }
+
+      .security-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #f3f4f6;
+        padding: 8px 16px;
+        border-radius: 20px;
+        margin-top: 12px;
+        font-size: 0.85rem;
+      }
+
+      .card {
+        border: none;
+        border-radius: 16px;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        background: white;
+        margin-bottom: 30px;
+      }
+
+      .card-header {
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-dark)
+        );
+        color: white;
+        padding: 25px;
+        text-align: center;
+        border: none;
+      }
+
+      .preview-container {
+        position: relative;
+        width: 100%;
+        height: 300px;
+        background-color: #f8fafc;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        border: 2px dashed var(--border);
+      }
+
+      .preview-container.active {
+        border-color: var(--primary);
+        background-color: #f0f7ff;
+      }
+
+      .preview-container img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        display: none;
+      }
+
+      .preview-placeholder {
+        text-align: center;
+        padding: 20px;
+        color: var(--secondary);
+      }
+
+      .preview-placeholder i {
+        font-size: 3.2rem;
+        margin-bottom: 18px;
+        color: #cbd5e1;
+      }
+
+      .upload-btn-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+        width: 100%;
+        margin-bottom: 15px;
+      }
+
+      .btn-upload {
+        background-color: white;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+        padding: 13px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.2s ease;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .alert-warning {
+        background-color: #fef3c7;
+        color: #92400e;
+      }
+
+      .btn-upload:hover {
+        background-color: var(--primary);
+        color: white;
+      }
+
+      #imageInput {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+      }
+
+      .btn-predict {
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-dark)
+        );
+        color: white;
+        border: none;
+        padding: 14px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.2s ease;
+        margin-top: 5px;
+        box-shadow: 0 4px 6px rgba(26, 86, 219, 0.15);
+      }
+
+      .btn-predict:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 10px rgba(26, 86, 219, 0.2);
+      }
+
+      .btn-predict:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .result-container {
+        background-color: white;
+        border-radius: 10px;
+        padding: 24px;
+        margin-top: 25px;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      }
+
+      .result-container.authentic {
+        border-left: 4px solid var(--authentic);
+      }
+
+      .result-container.deepfake {
+        border-left: 4px solid var(--deepfake);
+      }
+
+      .loading-container {
+        display: none;
+        text-align: center;
+        padding: 25px;
+      }
+
+      .spinner {
+        width: 44px;
+        height: 44px;
+        border: 4px solid rgba(26, 86, 219, 0.15);
+        border-radius: 50%;
+        border-top-color: var(--primary);
+        animation: spin 1s linear infinite;
+        margin: 0 auto 18px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .analysis-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 25px;
+        padding-top: 25px;
+        border-top: 1px solid var(--border);
+      }
+
+      .step {
+        text-align: center;
+        flex: 1;
+        padding: 0 10px;
+      }
+
+      .step-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        margin: 0 auto 12px;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .alert {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+      }
+
+      .alert-success {
+        background-color: #d1fae5;
+        color: #065f46;
+      }
+
+      .alert-danger {
+        background-color: #fee2e2;
+        color: #b91c1c;
+      }
+    </style>
   </head>
-  <body class="bg-light">
-    <div
-      class="container d-flex flex-column justify-content-center align-items-center min-vh-100"
-    >
-      <div class="card shadow-lg p-4 w-100" style="max-width: 500px">
-        <h1 class="text-center mb-4">Upload Image for Prediction</h1>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+      <div class="container">
+        <a class="navbar-brand" href="/">
+          <i class="fas fa-shield-alt me-2"></i>DeepScan
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <!-- <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link active" href="/">
+                <i class="fas fa-home me-1"></i> Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/about">
+                <i class="fas fa-info-circle me-1"></i> About
+              </a>
+            </li>
+          </ul>
+        </div> -->
+      </div>
+    </nav>
 
-        <!-- No more form tag -->
-        <div>
-          <div class="mb-3">
-            <label for="imageInput" class="form-label">Select Image</label>
-            <input
-              type="file"
-              class="form-control"
-              id="imageInput"
-              accept="image/*"
-            />
-          </div>
-
-          <button
-            type="button"
-            class="btn btn-primary w-100"
-            onclick="uploadImage()"
-          >
-            Predict
-          </button>
+    <div class="container-wrapper">
+      <div class="card">
+        <div class="card-header">
+          <h1><i class="fas fa-shield-alt"></i> DeepScan Analyzer</h1>
+          <p>Professional deepfake detection for images</p>
         </div>
 
-        <div class="mt-4 text-center">
-          <p id="result" class="fw-semibold fs-5 text-dark"></p>
+        <div class="card-body">
+          <div class="preview-container" id="previewContainer">
+            <div class="preview-placeholder">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <h4>Upload Image File</h4>
+              <p>For deepfake analysis</p>
+            </div>
+            <img id="imagePreview" src="" alt="Preview" />
+          </div>
+
+          <div class="upload-btn-wrapper">
+            <button class="btn-upload">
+              <i class="fas fa-folder-open"></i> Select Image
+              <input type="file" id="imageInput" accept="image/*" />
+            </button>
+          </div>
+
+          <button class="btn-predict" onclick="uploadImage()" id="predictBtn">
+            <i class="fas fa-search"></i> Analyze for Deepfakes
+          </button>
+
+          <div class="loading-container" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p>Analyzing image with AI model</p>
+          </div>
+
+          <div class="result-container" id="resultContainer">
+            <div class="result-title mb-3">
+              <i class="fas fa-poll me-2"></i>
+              <span class="h4">Deepfake Analysis Result</span>
+            </div>
+            <div class="result-content" id="resultText"></div>
+          </div>
+
+          <div class="analysis-steps">
+            <div class="step">
+              <div class="step-number">1</div>
+              <div class="step-text">Upload</div>
+            </div>
+            <div class="step">
+              <div class="step-number">2</div>
+              <div class="step-text">Analyze</div>
+            </div>
+            <div class="step">
+              <div class="step-number">3</div>
+              <div class="step-text">Results</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- JavaScript Logic -->
+    <div class="footer">
+      <p>DeepScan Analyzer v2.0 | Advanced Deepfake Detection</p>
+      <div class="security-badge">
+        <i class="fas fa-lock"></i>
+        <span>Secure Analysis | Data Privacy Guaranteed</span>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
-      async function uploadImage(event) {
-        const input = document.getElementById("imageInput");
-        const file = input.files[0];
+      // DOM elements
+      const imageInput = document.getElementById("imageInput");
+      const imagePreview = document.getElementById("imagePreview");
+      const previewContainer = document.getElementById("previewContainer");
+      const previewPlaceholder = document.querySelector(".preview-placeholder");
+      const predictBtn = document.getElementById("predictBtn");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const resultContainer = document.getElementById("resultContainer");
+      const resultText = document.getElementById("resultText");
+
+      // Image preview functionality
+      imageInput.addEventListener("change", function () {
+        const file = this.files[0];
+        if (file) {
+          const reader = new FileReader();
+
+          reader.onload = function (e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = "block";
+            previewPlaceholder.style.display = "none";
+            previewContainer.classList.add("active");
+            resultContainer.style.display = "none";
+          };
+
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Upload and predict function
+      async function uploadImage() {
+        const file = imageInput.files[0];
+
         if (!file) {
-          alert("Please select an image");
+          alert("Please select an image first");
           return;
         }
 
-        const formData = new FormData();
-        formData.append("image", file);
+        loadingIndicator.style.display = "block";
+        predictBtn.disabled = true;
+        resultContainer.style.display = "none";
 
         try {
+          const formData = new FormData();
+          formData.append("image", file);
+
           const response = await fetch("/predict", {
             method: "POST",
             body: formData,
           });
 
-          const data = await response.json();
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Analysis failed");
+          }
 
-          document.getElementById(
-            "result"
-          ).innerText = `Prediction: ${data.prediction} (Confidence: ${data.confidence}%)`;
+          const data = await response.json();
+          displayResult(data);
         } catch (error) {
           console.error("Error:", error);
-          document.getElementById("result").innerText =
-            "Error: Unable to get prediction.";
+
+          // Handle specific error cases
+          if (error.message.includes("No human face detected")) {
+            resultText.innerHTML = `
+            <div class="alert alert-warning">
+              <div class="d-flex align-items-center">
+                <i class="fas fa-user-slash fa-2x me-3"></i>
+                <div>
+                  <h5 class="mb-1">No Human Face Detected</h5>
+                  <p class="mb-0">Please upload an image containing a human face</p>
+                </div>
+              </div>
+            </div>
+          `;
+            resultContainer.className = "result-container";
+          } else {
+            resultText.innerHTML = `
+            <div class="alert alert-danger">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              ${
+                error.message ||
+                "Error: Unable to analyze image. Please try again."
+              }
+            </div>
+          `;
+            resultContainer.className = "result-container deepfake";
+          }
+          resultContainer.style.display = "block";
+        } finally {
+          loadingIndicator.style.display = "none";
+          predictBtn.disabled = false;
         }
+      }
+
+      // Display prediction result
+      function displayResult(data) {
+        if (data.prediction === "Positive") {
+          resultText.innerHTML = `
+          <div class="alert alert-success">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-check-circle fa-2x me-3"></i>
+              <div>
+                <h5 class="mb-1">Authentic Image</h5>
+                <p class="mb-0">No deepfake indicators detected</p>
+              </div>
+            </div>
+          </div>
+        `;
+          resultContainer.className = "result-container authentic";
+        } else {
+          resultText.innerHTML = `
+          <div class="alert alert-danger">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+              <div>
+                <h5 class="mb-1">Deepfake Detected</h5>
+                <p class="mb-0">AI-generated manipulation indicators found</p>
+              </div>
+            </div>
+          </div>
+        `;
+          resultContainer.className = "result-container deepfake";
+        }
+        resultContainer.style.display = "block";
       }
     </script>
   </body>
